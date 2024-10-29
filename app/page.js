@@ -1,101 +1,146 @@
+"use client";
 import Image from "next/image";
+import { useEffect } from "react";
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.js
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  useEffect(() => {
+    class Car {
+      constructor(x, y, width, height) {
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+        this.speed = 0;
+        this.angle = 0;
+        this.acceleration = 0.2;
+        this.maxSpeed = 3;
+        this.friction = 0.05;
+        this.controls = new Controls();
+      }
+      update() {
+        this.#move();
+      }
+      #move(){
+        if (this.controls.forward) {
+          this.acceleration += 1;
+          this.speed += this.acceleration;
+        }
+        if (this.controls.reverse) {
+          this.speed -= this.acceleration;
+        }
+        if (this.speed > this.maxSpeed) {
+          this.speed = this.maxSpeed;
+        }
+        if (this.speed < -(this.maxSpeed / 2)) {
+          this.speed = -this.maxSpeed / 2;
+        }
+        if (this.speed > 0) {
+          this.speed -= this.friction;
+        }
+        if (this.speed < 0) {
+          this.speed += this.friction;
+        }
+        if (Math.abs(this.speed) < this.friction) {
+          this.speed = 0;
+        }
+        if (this.speed != 0) {
+          const flip = this.speed > 0 ? 1 : -1;
+          if (this.controls.right) {
+            this.angle -= 0.03 * flip;
+          }
+          if (this.controls.left) {
+            this.angle += 0.03 * flip;
+          }
+        }
+        this.x -= Math.sin(this.angle) * this.speed;
+        this.y -= Math.cos(this.angle) * this.speed;
+      
+      }
+      draw(ctx) {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(-this.angle);
+        ctx.beginPath();
+        ctx.rect(-this.width / 2, -this.height / 2, this.width, this.height);
+        ctx.fill();
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
+        ctx.restore();
+      }
+    }
+
+    class Controls {
+      constructor() {
+        this.forward = false;
+        this.left = false;
+        this.right = false;
+        this.reverse = false;
+
+        this.#addKeyboardListeners();
+      }
+      #addKeyboardListeners() {
+        document.onkeydown = (event) => {
+          switch (event.key) {
+            case "ArrowUp":
+              this.forward = true;
+              break;
+            case "ArrowLeft":
+              this.left = true;
+              break;
+            case "ArrowRight":
+              this.right = true;
+              break;
+            case "ArrowDown":
+              this.reverse = true;
+              break;
+          }
+          document.onkeyup = (event) => {
+            switch (event.key) {
+              case "ArrowUp":
+                this.forward = false;
+                break;
+              case "ArrowLeft":
+                this.left = false;
+                break;
+              case "ArrowRight":
+                this.right = false;
+                break;
+              case "ArrowDown":
+                this.reverse = false;
+                break;
+            }
+          };
+        };
+      }
+    }
+
+    const canvas = document.getElementById("myCanvas");
+    // Set actual canvas dimensions
+    canvas.width = 200;
+    const ctx = canvas.getContext("2d");
+    const car = new Car(100, 100, 30, 50);
+    car.draw(ctx);
+
+    animate();
+
+    function animate() {
+      car.update();
+      canvas.height = window.innerHeight;
+      car.draw(ctx);
+      requestAnimationFrame(animate);
+    }
+
+    // Handle window resize
+    const handleResize = () => {
+      canvas.height = window.innerHeight;
+    };
+
+    window.addEventListener("resize", handleResize);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
+
+  return <canvas className="bg-gray-400" id="myCanvas"></canvas>;
 }
