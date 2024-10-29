@@ -12,7 +12,7 @@ export default function Home() {
         this.height = height;
         this.speed = 0;
         this.angle = 0;
-        this.acceleration = 0.2;
+        this.acceleration = 0.3;
         this.maxSpeed = 3;
         this.friction = 0.05;
         this.controls = new Controls();
@@ -20,7 +20,7 @@ export default function Home() {
       update() {
         this.#move();
       }
-      #move(){
+      #move() {
         if (this.controls.forward) {
           this.acceleration += 1;
           this.speed += this.acceleration;
@@ -54,7 +54,6 @@ export default function Home() {
         }
         this.x -= Math.sin(this.angle) * this.speed;
         this.y -= Math.cos(this.angle) * this.speed;
-      
       }
       draw(ctx) {
         ctx.save();
@@ -113,11 +112,66 @@ export default function Home() {
       }
     }
 
+    class Road {
+      constructor(x, width, laneCount = 4) {
+        this.x = x;
+        this.width = width;
+        this.laneCount = laneCount;
+        this.left = x - width / 2;
+        this.right = x + width / 2;
+
+        const infinity = 100000;
+        this.top = -infinity;
+        this.bottom = infinity;
+        const topLeft = { x: this.left, y: this.top };
+        const topRight = { x: this.right, y: this.top };
+        const bottomLeft = { x: this.left, y: this.bottom };
+        const bottomRight = { x: this.right, y: this.bottom };
+
+        this.borders = [
+          [topLeft, bottomLeft],
+          [topRight, bottomRight],
+        ];
+      }
+      getLaneCenter(laneIndex) {
+        const laneWidth = this.width / this.laneCount;
+        return (
+          this.left +
+          laneWidth / 2 +
+          Math.min(laneIndex, this.laneCount - 1) * laneWidth
+        );
+      }
+      draw(ctx) {
+        ctx.lineWidth = 5;
+        ctx.strokeStyle = "white";
+
+        for (let i = 1; i < this.laneCount ; i++) {
+          const x = lerp(this.left, this.right, i / this.laneCount);
+
+          ctx.setLineDash([20, 20]);
+          ctx.beginPath();
+          ctx.moveTo(x, this.top);
+          ctx.lineTo(x, this.bottom);
+          ctx.stroke();
+        }
+        ctx.setLineDash([]);
+        this.borders.forEach((border) => {
+          ctx.beginPath();
+          ctx.moveTo(border[0].x, border[0].y);
+          ctx.lineTo(border[1].x, border[1].y);
+          ctx.stroke();
+        });
+      }
+    }
+    function lerp(A, B, t) {
+      return A + (B - A) * t;
+    }
     const canvas = document.getElementById("myCanvas");
     // Set actual canvas dimensions
     canvas.width = 200;
     const ctx = canvas.getContext("2d");
-    const car = new Car(100, 100, 30, 50);
+    const road = new Road(canvas.width / 2, canvas.width * 0.9);
+    const car = new Car(road.getLaneCenter(1), 100, 30, 50);
     car.draw(ctx);
 
     animate();
@@ -125,7 +179,13 @@ export default function Home() {
     function animate() {
       car.update();
       canvas.height = window.innerHeight;
+      ctx.save()
+      ctx.translate(0,-car.y+canvas.height*0.5)
+
+      road.draw(ctx);
       car.draw(ctx);
+
+      ctx.restore()
       requestAnimationFrame(animate);
     }
 
