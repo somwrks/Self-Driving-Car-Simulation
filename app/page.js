@@ -31,7 +31,6 @@ export default function Home() {
         if (this.sensor) {
           this.sensor.update(roadBorders);
         }
-        this.sensor.update(roadBorders);
       } //#endregion
       #assessDamage(roadBorders) {
         for (let i = 0; i < roadBorders.length; i++) {
@@ -369,15 +368,15 @@ export default function Home() {
 
     function animate() {
       for (let i = 0; i < traffic.length; i++) {
-        traffic[i].update(road.borders);
+        traffic[i].update(road.borders,[]);
       }
+      car.update(road.borders,traffic);
       canvas.height = window.innerHeight;
 
       ctx.save();
       ctx.translate(0, -car.y + canvas.height * 0.7);
 
       road.draw(ctx);
-      car.update(road.borders);
       for (let i = 0; i < traffic.length; i++) {
         traffic[i].draw(ctx);
       }
