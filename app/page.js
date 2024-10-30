@@ -13,14 +13,14 @@ export default function Home() {
         this.speed = 0;
         this.angle = 0;
         this.acceleration = 0.3;
-        this.maxSpeed = 3;
+        this.maxSpeed = 5;
         this.friction = 0.05;
         this.sensor = new Sensor(this);
         this.controls = new Controls();
       }
-      update() {
+      update(roadBorders) {
         this.#move();
-        this.sensor.update();
+        this.sensor.update(roadBorders);
       }
       #move() {
         if (this.controls.forward) {
@@ -66,7 +66,7 @@ export default function Home() {
         ctx.fill();
 
         ctx.restore();
-        this.sensor.draw(ctx); 
+        this.sensor.draw(ctx);
       }
     }
 
@@ -79,63 +79,74 @@ export default function Home() {
 
         this.#addKeyboardListeners();
       }
+
       #addKeyboardListeners() {
         document.onkeydown = (event) => {
-          switch (event.key) {
-            case "ArrowUp":
-              this.forward = true;
-              break;
-            case "ArrowLeft":
-              this.left = true;
-              break;
-            case "ArrowRight":
-              this.right = true;
-              break;
-            case "ArrowDown":
-              this.reverse = true;
-              break;
-          }
-          document.onkeyup = (event) => {
             switch (event.key) {
-              case "ArrowUp":
-                this.forward = false;
-                break;
-              case "ArrowLeft":
-                this.left = false;
-                break;
-              case "ArrowRight":
-                this.right = false;
-                break;
-              case "ArrowDown":
-                this.reverse = false;
-                break;
+                case "ArrowLeft":
+                case "a":
+                    this.left = true;
+                    break;
+                case "ArrowRight":
+                case "d":
+                    this.right = true;
+                    break;
+                case "ArrowUp":
+                case "w":
+                    this.forward = true;
+                    break;
+                case "ArrowDown":
+                case "s":
+                    this.reverse = true;
+                    break;
             }
-          };
         };
-      }
+        document.onkeyup = (event) => {
+            switch (event.key) {
+                case "ArrowLeft":
+                case "a":
+                    this.left = false;
+                    break;
+                case "ArrowRight":
+                case "d":
+                    this.right = false;
+                    break;
+                case "ArrowUp":
+                case "w":
+                    this.forward = false;
+                    break;
+                case "ArrowDown":
+                case "s":
+                    this.reverse = false;
+                    break;
+            }
+        };
+    }
     }
 
     class Road {
-      constructor(x, width, laneCount = 4) {
+      constructor(x, width, laneCount = 3) {
         this.x = x;
         this.width = width;
         this.laneCount = laneCount;
+
         this.left = x - width / 2;
         this.right = x + width / 2;
 
-        const infinity = 100000;
+        const infinity = 1000000;
         this.top = -infinity;
         this.bottom = infinity;
+
         const topLeft = { x: this.left, y: this.top };
         const topRight = { x: this.right, y: this.top };
         const bottomLeft = { x: this.left, y: this.bottom };
         const bottomRight = { x: this.right, y: this.bottom };
-
         this.borders = [
           [topLeft, bottomLeft],
           [topRight, bottomRight],
         ];
       }
+
       getLaneCenter(laneIndex) {
         const laneWidth = this.width / this.laneCount;
         return (
@@ -144,11 +155,12 @@ export default function Home() {
           Math.min(laneIndex, this.laneCount - 1) * laneWidth
         );
       }
+
       draw(ctx) {
         ctx.lineWidth = 5;
         ctx.strokeStyle = "white";
 
-        for (let i = 1; i < this.laneCount; i++) {
+        for (let i = 1; i <= this.laneCount - 1; i++) {
           const x = lerp(this.left, this.right, i / this.laneCount);
 
           ctx.setLineDash([20, 20]);
@@ -157,6 +169,7 @@ export default function Home() {
           ctx.lineTo(x, this.bottom);
           ctx.stroke();
         }
+
         ctx.setLineDash([]);
         this.borders.forEach((border) => {
           ctx.beginPath();
@@ -169,21 +182,57 @@ export default function Home() {
 
     class Sensor {
       constructor(car) {
-        // defining the neurons of the neural netwrok
         this.car = car;
-        this.rayCount = 3;
-        this.rayLength = 100;
-        this.raySpread = Math.PI / 4;
+        this.rayCount = 5;
+        this.rayLength = 150;
+        this.raySpread = Math.PI / 2;
+
         this.rays = [];
+        this.readings = [];
       }
-      update() {
+
+      update(roadBorders) {
+        this.#castRays();
+        this.readings = [];
+        for (let i = 0; i < this.rays.length; i++) {
+          this.readings.push(this.#getReading(this.rays[i], roadBorders));
+        }
+      }
+
+      #getReading(ray, roadBorders) {
+        let touches = [];
+
+        for (let i = 0; i < roadBorders.length; i++) {
+          const touch = getIntersection(
+            ray[0],
+            ray[1],
+            roadBorders[i][0],
+            roadBorders[i][1]
+          );
+          if (touch) {
+            touches.push(touch);
+          }
+        }
+
+        if (touches.length == 0) {
+          return null;
+        } else {
+          const offsets = touches.map((e) => e.offset);
+          const minOffset = Math.min(...offsets);
+          return touches.find((e) => e.offset == minOffset);
+        }
+      }
+
+      #castRays() {
         this.rays = [];
         for (let i = 0; i < this.rayCount; i++) {
-          const rayAngle = lerp(
-            this.raySpread / 2,
-            -this.raySpread / 2,
-            i / (this.rayCount - 1)
-          );
+          const rayAngle =
+            lerp(
+              this.raySpread / 2,
+              -this.raySpread / 2,
+              this.rayCount == 1 ? 0.5 : i / (this.rayCount - 1)
+            ) + this.car.angle;
+
           const start = { x: this.car.x, y: this.car.y };
           const end = {
             x: this.car.x - Math.sin(rayAngle) * this.rayLength,
@@ -192,14 +241,28 @@ export default function Home() {
           this.rays.push([start, end]);
         }
       }
-      draw(ctx){
-        console.log("called!")
-        for (let i = 0; i < this.rayCount-1; i++) {
+
+      draw(ctx) {
+        if (!this.rays.length) return; // Guard clause
+
+        for (let i = 0; i < this.rayCount; i++) {
+          let end = this.rays[i][1];
+          if (this.readings[i]) {
+            end = this.readings[i];
+          }
+
           ctx.beginPath();
-          ctx.lineWidth= 2;
+          ctx.lineWidth = 2;
           ctx.strokeStyle = "yellow";
           ctx.moveTo(this.rays[i][0].x, this.rays[i][0].y);
-          // ctx.lineTo(this.rays[i][1].x, this.rays[i][1].y);
+          ctx.lineTo(end.x, end.y);
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = "black";
+          ctx.moveTo(this.rays[i][1].x, this.rays[i][1].y);
+          ctx.lineTo(end.x, end.y);
           ctx.stroke();
         }
       }
@@ -207,27 +270,47 @@ export default function Home() {
     function lerp(A, B, t) {
       return A + (B - A) * t;
     }
+
+    function getIntersection(A, B, C, D) {
+      const tTop = (D.x - C.x) * (A.y - C.y) - (D.y - C.y) * (A.x - C.x);
+      const uTop = (C.y - A.y) * (A.x - B.x) - (C.x - A.x) * (A.y - B.y);
+      const bottom = (D.y - C.y) * (B.x - A.x) - (D.x - C.x) * (B.y - A.y);
+
+      if (bottom != 0) {
+        const t = tTop / bottom;
+        const u = uTop / bottom;
+        if (t >= 0 && t <= 1 && u >= 0 && u <= 1) {
+          return {
+            x: lerp(A.x, B.x, t),
+            y: lerp(A.y, B.y, t),
+            offset: t,
+          };
+        }
+      }
+
+      return null;
+    }
     const canvas = document.getElementById("myCanvas");
-    // Set actual canvas dimensions
     canvas.width = 200;
+
     const ctx = canvas.getContext("2d");
     const road = new Road(canvas.width / 2, canvas.width * 0.9);
     const car = new Car(road.getLaneCenter(1), 100, 30, 50);
-    car.draw(ctx);
 
     animate();
 
     function animate() {
-      car.update();
+      
       canvas.height = window.innerHeight;
+      
       ctx.save();
-      ctx.translate(0, -car.y + canvas.height * 0.5);
-
+      ctx.translate(0, -car.y + canvas.height * 0.7);
+      
       road.draw(ctx);
+      car.update(road.borders);
       car.draw(ctx);
 
       ctx.restore();
-      
       requestAnimationFrame(animate);
     }
 
