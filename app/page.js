@@ -15,10 +15,12 @@ export default function Home() {
         this.acceleration = 0.3;
         this.maxSpeed = 3;
         this.friction = 0.05;
+        this.sensor = new Sensor(this);
         this.controls = new Controls();
       }
       update() {
         this.#move();
+        this.sensor.update();
       }
       #move() {
         if (this.controls.forward) {
@@ -64,6 +66,7 @@ export default function Home() {
         ctx.fill();
 
         ctx.restore();
+        this.sensor.draw(ctx); 
       }
     }
 
@@ -145,7 +148,7 @@ export default function Home() {
         ctx.lineWidth = 5;
         ctx.strokeStyle = "white";
 
-        for (let i = 1; i < this.laneCount ; i++) {
+        for (let i = 1; i < this.laneCount; i++) {
           const x = lerp(this.left, this.right, i / this.laneCount);
 
           ctx.setLineDash([20, 20]);
@@ -161,6 +164,44 @@ export default function Home() {
           ctx.lineTo(border[1].x, border[1].y);
           ctx.stroke();
         });
+      }
+    }
+
+    class Sensor {
+      constructor(car) {
+        // defining the neurons of the neural netwrok
+        this.car = car;
+        this.rayCount = 3;
+        this.rayLength = 100;
+        this.raySpread = Math.PI / 4;
+        this.rays = [];
+      }
+      update() {
+        this.rays = [];
+        for (let i = 0; i < this.rayCount; i++) {
+          const rayAngle = lerp(
+            this.raySpread / 2,
+            -this.raySpread / 2,
+            i / (this.rayCount - 1)
+          );
+          const start = { x: this.car.x, y: this.car.y };
+          const end = {
+            x: this.car.x - Math.sin(rayAngle) * this.rayLength,
+            y: this.car.y - Math.cos(rayAngle) * this.rayLength,
+          };
+          this.rays.push([start, end]);
+        }
+      }
+      draw(ctx){
+        console.log("called!")
+        for (let i = 0; i < this.rayCount-1; i++) {
+          ctx.beginPath();
+          ctx.lineWidth= 2;
+          ctx.strokeStyle = "yellow";
+          ctx.moveTo(this.rays[i][0].x, this.rays[i][0].y);
+          // ctx.lineTo(this.rays[i][1].x, this.rays[i][1].y);
+          ctx.stroke();
+        }
       }
     }
     function lerp(A, B, t) {
@@ -179,13 +220,14 @@ export default function Home() {
     function animate() {
       car.update();
       canvas.height = window.innerHeight;
-      ctx.save()
-      ctx.translate(0,-car.y+canvas.height*0.5)
+      ctx.save();
+      ctx.translate(0, -car.y + canvas.height * 0.5);
 
       road.draw(ctx);
       car.draw(ctx);
 
-      ctx.restore()
+      ctx.restore();
+      
       requestAnimationFrame(animate);
     }
 
