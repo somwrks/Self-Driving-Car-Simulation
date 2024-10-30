@@ -5,7 +5,7 @@ import { useEffect } from "react";
 export default function Home() {
   useEffect(() => {
     class Car {
-      constructor(x, y, width, height) {
+      constructor(x, y, width, height, controlType, maxSpeed = 3) {
         this.x = x;
         this.y = y;
         this.width = width;
@@ -13,14 +13,53 @@ export default function Home() {
         this.speed = 0;
         this.angle = 0;
         this.acceleration = 0.3;
-        this.maxSpeed = 5;
+        this.maxSpeed = maxSpeed;
+        this.damaged = false;
         this.friction = 0.05;
-        this.sensor = new Sensor(this);
-        this.controls = new Controls();
+        if (controlType != "DUMMY") {
+          this.sensor = new Sensor(this);
+        }
+        this.controls = new Controls(controlType);
       }
       update(roadBorders) {
-        this.#move();
+        if (!this.damaged) {
+          this.#move();
+          this.polygon = this.#createPolygon();
+          this.damaged = this.#assessDamage(roadBorders);
+        }
+
+        if (this.sensor) {
+          this.sensor.update(roadBorders);
+        }
         this.sensor.update(roadBorders);
+      } //#endregion
+      #assessDamage(roadBorders) {
+        for (let i = 0; i < roadBorders.length; i++) {
+          if (polysIntersect(this.polygon, roadBorders[i])) return true;
+        }
+        return false;
+      }
+      #createPolygon() {
+        const points = [];
+        const rad = Math.hypot(this.width, this.height) / 2;
+        const alpha = Math.atan2(this.width, this.height);
+        points.push({
+          x: this.x - Math.sin(this.angle - alpha) * rad,
+          y: this.y - Math.cos(this.angle - alpha) * rad,
+        });
+        points.push({
+          x: this.x - Math.sin(this.angle + alpha) * rad,
+          y: this.y - Math.cos(this.angle + alpha) * rad,
+        });
+        points.push({
+          x: this.x - Math.sin(Math.PI + this.angle - alpha) * rad,
+          y: this.y - Math.cos(Math.PI + this.angle - alpha) * rad,
+        });
+        points.push({
+          x: this.x - Math.sin(Math.PI + this.angle + alpha) * rad,
+          y: this.y - Math.cos(Math.PI + this.angle + alpha) * rad,
+        });
+        return points;
       }
       #move() {
         if (this.controls.forward) {
@@ -58,70 +97,82 @@ export default function Home() {
         this.y -= Math.cos(this.angle) * this.speed;
       }
       draw(ctx) {
-        ctx.save();
-        ctx.translate(this.x, this.y);
-        ctx.rotate(-this.angle);
+        if (this.damaged) {
+          ctx.fillStyle = "red";
+        } else {
+          ctx.fillStyle = "blue";
+        }
         ctx.beginPath();
-        ctx.rect(-this.width / 2, -this.height / 2, this.width, this.height);
+        ctx.moveTo(this.polygon[0].x, this.polygon[0].y);
+        for (let i = 1; i < this.polygon.length; i++) {
+          ctx.lineTo(this.polygon[i].x, this.polygon[i].y);
+        }
         ctx.fill();
-
-        ctx.restore();
-        this.sensor.draw(ctx);
+        if (this.sensor) {
+          this.sensor.draw(ctx);
+        }
       }
     }
 
     class Controls {
-      constructor() {
+      constructor(type) {
         this.forward = false;
         this.left = false;
         this.right = false;
         this.reverse = false;
-
-        this.#addKeyboardListeners();
+        switch (type) {
+          case "KEYS":
+            this.#addKeyboardListeners();
+            break;
+          case "DUMMY":
+            this.forward = true;
+            break;
+          default:
+        }
       }
 
       #addKeyboardListeners() {
         document.onkeydown = (event) => {
-            switch (event.key) {
-                case "ArrowLeft":
-                case "a":
-                    this.left = true;
-                    break;
-                case "ArrowRight":
-                case "d":
-                    this.right = true;
-                    break;
-                case "ArrowUp":
-                case "w":
-                    this.forward = true;
-                    break;
-                case "ArrowDown":
-                case "s":
-                    this.reverse = true;
-                    break;
-            }
+          switch (event.key) {
+            case "ArrowLeft":
+            case "a":
+              this.left = true;
+              break;
+            case "ArrowRight":
+            case "d":
+              this.right = true;
+              break;
+            case "ArrowUp":
+            case "w":
+              this.forward = true;
+              break;
+            case "ArrowDown":
+            case "s":
+              this.reverse = true;
+              break;
+          }
         };
         document.onkeyup = (event) => {
-            switch (event.key) {
-                case "ArrowLeft":
-                case "a":
-                    this.left = false;
-                    break;
-                case "ArrowRight":
-                case "d":
-                    this.right = false;
-                    break;
-                case "ArrowUp":
-                case "w":
-                    this.forward = false;
-                    break;
-                case "ArrowDown":
-                case "s":
-                    this.reverse = false;
-                    break;
-            }
+          switch (event.key) {
+            case "ArrowLeft":
+            case "a":
+              this.left = false;
+              break;
+            case "ArrowRight":
+            case "d":
+              this.right = false;
+              break;
+            case "ArrowUp":
+            case "w":
+              this.forward = false;
+              break;
+            case "ArrowDown":
+            case "s":
+              this.reverse = false;
+              break;
+          }
         };
-    }
+      }
     }
 
     class Road {
@@ -290,24 +341,46 @@ export default function Home() {
 
       return null;
     }
+    function polysIntersect(poly1, poly2) {
+      for (let i = 0; i < poly1.length; i++) {
+        for (let j = 0; j < poly2.length; j++) {
+          const touch = getIntersection(
+            poly1[i],
+            poly1[(i + 1) % poly1.length],
+            poly2[j],
+            poly2[(j + 1) % poly2.length]
+          );
+          if (touch) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
     const canvas = document.getElementById("myCanvas");
     canvas.width = 200;
 
     const ctx = canvas.getContext("2d");
     const road = new Road(canvas.width / 2, canvas.width * 0.9);
-    const car = new Car(road.getLaneCenter(1), 100, 30, 50);
+    const car = new Car(road.getLaneCenter(1), 100, 30, 50, "KEYS");
 
+    const traffic = [new Car(road.getLaneCenter(1), -100, 30, 50, "DUMMY", 2)];
     animate();
 
     function animate() {
-      
+      for (let i = 0; i < traffic.length; i++) {
+        traffic[i].update(road.borders);
+      }
       canvas.height = window.innerHeight;
-      
+
       ctx.save();
       ctx.translate(0, -car.y + canvas.height * 0.7);
-      
+
       road.draw(ctx);
       car.update(road.borders);
+      for (let i = 0; i < traffic.length; i++) {
+        traffic[i].draw(ctx);
+      }
       car.draw(ctx);
 
       ctx.restore();
