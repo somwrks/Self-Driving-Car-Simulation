@@ -10,34 +10,59 @@ export default function Home() {
         this.y = y;
         this.width = width;
         this.height = height;
+
         this.speed = 0;
-        this.angle = 0;
-        this.acceleration = 0.3;
+        this.acceleration = 0.2;
         this.maxSpeed = maxSpeed;
-        this.damaged = false;
         this.friction = 0.05;
+        this.angle = 0;
+        this.damaged = false;
+
+        this.useBrain = controlType == "AI";
+
         if (controlType != "DUMMY") {
           this.sensor = new Sensor(this);
+          this.brain = new NeuralNetwork([this.sensor.rayCount, 6, 4]);
         }
         this.controls = new Controls(controlType);
       }
-      update(roadBorders) {
+
+      update(roadBorders, traffic) {
         if (!this.damaged) {
           this.#move();
           this.polygon = this.#createPolygon();
-          this.damaged = this.#assessDamage(roadBorders);
+          this.damaged = this.#assessDamage(roadBorders, traffic);
         }
-
         if (this.sensor) {
-          this.sensor.update(roadBorders);
+          this.sensor.update(roadBorders, traffic);
+          const offsets = this.sensor.readings.map((s) =>
+            s == null ? 0 : 1 - s.offset
+          );
+          const outputs = NeuralNetwork.feedForward(offsets, this.brain);
+
+          if (this.useBrain) {
+            this.controls.forward = outputs[0];
+            this.controls.left = outputs[1];
+            this.controls.right = outputs[2];
+            this.controls.reverse = outputs[3];
+          }
         }
-      } //#endregion
-      #assessDamage(roadBorders) {
+      }
+
+      #assessDamage(roadBorders, traffic) {
         for (let i = 0; i < roadBorders.length; i++) {
-          if (polysIntersect(this.polygon, roadBorders[i])) return true;
+          if (polysIntersect(this.polygon, roadBorders[i])) {
+            return true;
+          }
+        }
+        for (let i = 0; i < traffic.length; i++) {
+          if (polysIntersect(this.polygon, traffic[i].polygon)) {
+            return true;
+          }
         }
         return false;
       }
+
       #createPolygon() {
         const points = [];
         const rad = Math.hypot(this.width, this.height) / 2;
@@ -60,20 +85,22 @@ export default function Home() {
         });
         return points;
       }
+
       #move() {
         if (this.controls.forward) {
-          this.acceleration += 1;
           this.speed += this.acceleration;
         }
         if (this.controls.reverse) {
           this.speed -= this.acceleration;
         }
+
         if (this.speed > this.maxSpeed) {
           this.speed = this.maxSpeed;
         }
-        if (this.speed < -(this.maxSpeed / 2)) {
+        if (this.speed < -this.maxSpeed / 2) {
           this.speed = -this.maxSpeed / 2;
         }
+
         if (this.speed > 0) {
           this.speed -= this.friction;
         }
@@ -83,23 +110,26 @@ export default function Home() {
         if (Math.abs(this.speed) < this.friction) {
           this.speed = 0;
         }
+
         if (this.speed != 0) {
           const flip = this.speed > 0 ? 1 : -1;
-          if (this.controls.right) {
-            this.angle -= 0.03 * flip;
-          }
           if (this.controls.left) {
             this.angle += 0.03 * flip;
           }
+          if (this.controls.right) {
+            this.angle -= 0.03 * flip;
+          }
         }
+
         this.x -= Math.sin(this.angle) * this.speed;
         this.y -= Math.cos(this.angle) * this.speed;
       }
-      draw(ctx) {
+
+      draw(ctx, color) {
         if (this.damaged) {
-          ctx.fillStyle = "red";
+          ctx.fillStyle = "gray";
         } else {
-          ctx.fillStyle = "blue";
+          ctx.fillStyle = color;
         }
         ctx.beginPath();
         ctx.moveTo(this.polygon[0].x, this.polygon[0].y);
@@ -107,18 +137,19 @@ export default function Home() {
           ctx.lineTo(this.polygon[i].x, this.polygon[i].y);
         }
         ctx.fill();
+
         if (this.sensor) {
           this.sensor.draw(ctx);
         }
       }
     }
-
     class Controls {
       constructor(type) {
         this.forward = false;
         this.left = false;
         this.right = false;
         this.reverse = false;
+
         switch (type) {
           case "KEYS":
             this.#addKeyboardListeners();
@@ -126,7 +157,6 @@ export default function Home() {
           case "DUMMY":
             this.forward = true;
             break;
-          default:
         }
       }
 
@@ -134,19 +164,15 @@ export default function Home() {
         document.onkeydown = (event) => {
           switch (event.key) {
             case "ArrowLeft":
-            case "a":
               this.left = true;
               break;
             case "ArrowRight":
-            case "d":
               this.right = true;
               break;
             case "ArrowUp":
-            case "w":
               this.forward = true;
               break;
             case "ArrowDown":
-            case "s":
               this.reverse = true;
               break;
           }
@@ -154,19 +180,15 @@ export default function Home() {
         document.onkeyup = (event) => {
           switch (event.key) {
             case "ArrowLeft":
-            case "a":
               this.left = false;
               break;
             case "ArrowRight":
-            case "d":
               this.right = false;
               break;
             case "ArrowUp":
-            case "w":
               this.forward = false;
               break;
             case "ArrowDown":
-            case "s":
               this.reverse = false;
               break;
           }
@@ -229,7 +251,6 @@ export default function Home() {
         });
       }
     }
-
     class Sensor {
       constructor(car) {
         this.car = car;
@@ -241,15 +262,17 @@ export default function Home() {
         this.readings = [];
       }
 
-      update(roadBorders) {
+      update(roadBorders, traffic) {
         this.#castRays();
         this.readings = [];
         for (let i = 0; i < this.rays.length; i++) {
-          this.readings.push(this.#getReading(this.rays[i], roadBorders));
+          this.readings.push(
+            this.#getReading(this.rays[i], roadBorders, traffic)
+          );
         }
       }
 
-      #getReading(ray, roadBorders) {
+      #getReading(ray, roadBorders, traffic) {
         let touches = [];
 
         for (let i = 0; i < roadBorders.length; i++) {
@@ -261,6 +284,21 @@ export default function Home() {
           );
           if (touch) {
             touches.push(touch);
+          }
+        }
+
+        for (let i = 0; i < traffic.length; i++) {
+          const poly = traffic[i].polygon;
+          for (let j = 0; j < poly.length; j++) {
+            const value = getIntersection(
+              ray[0],
+              ray[1],
+              poly[j],
+              poly[(j + 1) % poly.length]
+            );
+            if (value) {
+              touches.push(value);
+            }
           }
         }
 
@@ -293,8 +331,6 @@ export default function Home() {
       }
 
       draw(ctx) {
-        if (!this.rays.length) return; // Guard clause
-
         for (let i = 0; i < this.rayCount; i++) {
           let end = this.rays[i][1];
           if (this.readings[i]) {
@@ -315,6 +351,71 @@ export default function Home() {
           ctx.lineTo(end.x, end.y);
           ctx.stroke();
         }
+      }
+    }
+
+    class NeuralNetwork {
+      constructor(neuronCounts) {
+        this.levels = [];
+        for (let i = 0; i < neuronCounts.length - 1; i++) {
+          this.levels.push(new Level(neuronCounts[i], neuronCounts[i + 1]));
+        }
+      }
+
+      static feedForward(givenInputs, network) {
+        let outputs = Level.feedForward(givenInputs, network.levels[0]);
+        for (let i = 1; i < network.levels.length; i++) {
+          outputs = Level.feedForward(outputs, network.levels[i]);
+        }
+        return outputs;
+      }
+    }
+
+    class Level {
+      constructor(inputCount, outputCount) {
+        this.inputs = new Array(inputCount);
+        this.outputs = new Array(outputCount);
+        this.biases = new Array(outputCount);
+
+        this.weights = [];
+        for (let i = 0; i < inputCount; i++) {
+          this.weights[i] = new Array(outputCount);
+        }
+
+        Level.#randomize(this);
+      }
+
+      static #randomize(level) {
+        for (let i = 0; i < level.inputs.length; i++) {
+          for (let j = 0; j < level.outputs.length; j++) {
+            level.weights[i][j] = Math.random() * 2 - 1;
+          }
+        }
+
+        for (let i = 0; i < level.biases.length; i++) {
+          level.biases[i] = Math.random() * 2 - 1;
+        }
+      }
+
+      static feedForward(givenInputs, level) {
+        for (let i = 0; i < level.inputs.length; i++) {
+          level.inputs[i] = givenInputs[i];
+        }
+
+        for (let i = 0; i < level.outputs.length; i++) {
+          let sum = 0;
+          for (let j = 0; j < level.inputs.length; j++) {
+            sum += level.inputs[j] * level.weights[j][i];
+          }
+
+          if (sum > level.biases[i]) {
+            level.outputs[i] = 1;
+          } else {
+            level.outputs[i] = 0;
+          }
+        }
+
+        return level.outputs;
       }
     }
     function lerp(A, B, t) {
@@ -356,36 +457,42 @@ export default function Home() {
       }
       return false;
     }
-    const canvas = document.getElementById("myCanvas");
-    canvas.width = 200;
+    const carCanvas = document.getElementById("carCanvas");
+    carCanvas.width = 200;
+    const networkCanvas = document.getElementById("networkCanvas");
+    networkCanvas.width = 300;
 
-    const ctx = canvas.getContext("2d");
-    const road = new Road(canvas.width / 2, canvas.width * 0.9);
-    const car = new Car(road.getLaneCenter(1), 100, 30, 50, "KEYS");
+    const carCtx = carCanvas.getContext("2d");
+    const networkCtx = networkCanvas.getContext("2d");
 
+    const road = new Road(carCanvas.width / 2, carCanvas.width * 0.9);
+    const car = new Car(road.getLaneCenter(1), 100, 30, 50, "AI");
     const traffic = [new Car(road.getLaneCenter(1), -100, 30, 50, "DUMMY", 2)];
+
     animate();
 
     function animate() {
       for (let i = 0; i < traffic.length; i++) {
-        traffic[i].update(road.borders,[]);
+        traffic[i].update(road.borders, []);
       }
-      car.update(road.borders,traffic);
-      canvas.height = window.innerHeight;
+      car.update(road.borders, traffic);
 
-      ctx.save();
-      ctx.translate(0, -car.y + canvas.height * 0.7);
+      carCanvas.height = window.innerHeight;
+      networkCanvas.height = window.innerHeight;
 
-      road.draw(ctx);
+      carCtx.save();
+      carCtx.translate(0, -car.y + carCanvas.height * 0.7);
+
+      road.draw(carCtx);
       for (let i = 0; i < traffic.length; i++) {
-        traffic[i].draw(ctx);
+        traffic[i].draw(carCtx, "red");
       }
-      car.draw(ctx);
+      car.draw(carCtx, "blue");
 
-      ctx.restore();
+      carCtx.restore();
+
       requestAnimationFrame(animate);
     }
-
     // Handle window resize
     const handleResize = () => {
       canvas.height = window.innerHeight;
@@ -399,5 +506,10 @@ export default function Home() {
     };
   }, []);
 
-  return <canvas className="bg-gray-400" id="myCanvas"></canvas>;
+  return (
+    <>
+      <canvas id="carCanvas"></canvas>
+      <canvas id="networkCanvas"></canvas>
+    </>
+  );
 }
