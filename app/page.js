@@ -878,7 +878,7 @@ export default function Home() {
                   <div className="space-y-2">
                     <div>
                       <span className="font-bold">💾 Save:</span> Stores the
-                      best performing car's neural network for future use.
+                      best performing car&apos;s neural network for future use.
                     </div>
                     <div>
                       <span className="font-bold">🗑️ Discard:</span> Removes the
