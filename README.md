@@ -1,36 +1,66 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Self-Driving Car Simulation
+
+A fascinating deep learning visualization project that demonstrates the beauty of neural networks learning to navigate through traffic in real-time. This project brings together the elegance of autonomous driving and the complexity of neural evolution.
+
+## Overview
+
+This simulator creates an environment where AI-controlled cars learn to navigate through traffic using neural networks. Each car is equipped with sensors and a brain that evolves over time, showcasing the remarkable ability of deep learning systems to adapt and improve through experience.
+
+![{7712F6A4-D2A4-4FDC-95A8-17B469AA8670}](https://github.com/user-attachments/assets/77efdf3f-b62b-44e6-a183-1b7f95afa428)
+
+
+## Features
+
+### Neural Network Visualization
+- **Real-time Brain Activity**: Watch neural networks think and make decisions as cars navigate
+- **Interactive Network Display**: Visualizes neuron activations, weights, and biases in real-time
+- **Sensor System**: Shows how cars perceive their environment through multiple sensors
+
+### Learning Environment
+- **Dynamic Traffic**: Add or remove traffic cars to create varying levels of complexity
+- **Speed Control**: Adjust traffic speed to create different learning scenarios
+- **Mutation System**: Cars learn through genetic evolution, with each generation improving upon the last
+
+### Training Controls
+- **Save Best Performer**: Preserve the neural network of the most successful car
+- **Parallel Learning**: Multiple cars learn simultaneously, accelerating the evolution process
+- **Progressive Difficulty**: Traffic patterns that challenge the AI to develop robust driving strategies
+
+## Technical Implementation
+
+The project leverages several key concepts in deep learning:
+
+- **Feedforward Neural Networks**: Multi-layer perceptron architecture for decision making
+- **Genetic Algorithms**: Evolution-based learning through mutation and selection
+- **Sensor Fusion**: Multiple raycast sensors providing environmental awareness
+- **Real-time Visualization**: Canvas-based rendering of both the environment and neural network state
+
+## Why This Matters
+
+This simulator serves as a window into the learning process of neural networks, making typically abstract concepts tangible and observable. It demonstrates how:
+
+- Neural networks develop decision-making capabilities through experience
+- Simple rules can lead to complex, intelligent behavior
+- Machine learning systems adapt to changing environments
+- Collective learning can emerge from individual experiences
+
+## Future Enhancements
+
+The project is continuously evolving, with planned features including:
+
+- Advanced learning algorithms
+- More complex traffic scenarios
+- Additional sensor types
+- Performance metrics and analytics
+- Training data export capabilities
 
 ## Getting Started
 
-First, run the development server:
+1. Clone the repository
+2. Install dependencies with `npm install`
+3. Run the development server with `npm run dev`
+4. Open your browser to experience the learning process
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Contributing
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Your contributions to improve this learning environment are welcome! Whether it's adding features, improving the learning algorithm, or enhancing the visualization, every contribution helps create a better understanding of neural networks.
