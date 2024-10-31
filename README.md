@@ -6,6 +6,9 @@ A fascinating deep learning visualization project that demonstrates the beauty o
 
 This simulator creates an environment where AI-controlled cars learn to navigate through traffic using neural networks. Each car is equipped with sensors and a brain that evolves over time, showcasing the remarkable ability of deep learning systems to adapt and improve through experience.
 
+![{7712F6A4-D2A4-4FDC-95A8-17B469AA8670}](https://github.com/user-attachments/assets/77efdf3f-b62b-44e6-a183-1b7f95afa428)
+
+
 ## Features
 
 ### Neural Network Visualization
