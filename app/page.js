@@ -589,51 +589,71 @@ export default function Home() {
   function generateCars(N, road) {
     const cars = [];
     for (let i = 1; i <= N; i++) {
-      cars.push(
-        new Car(road.getLaneCenter(1), 100, 30, 50, "AI")
-      );
+      cars.push(new Car(road.getLaneCenter(1), 100, 30, 50, "AI"));
     }
     return cars;
   }
-  
-     
-  
-     // Add this right after all the class definitions but before using it
-  
+
+  // Add this right after all the class definitions but before using it
+
   // Then modify the initialization code
   useEffect(() => {
     if (!carCanvasRef.current || !networkCanvasRef.current) return;
 
     const carCanvas = carCanvasRef.current;
     const networkCanvas = networkCanvasRef.current;
-    
+
     carCanvas.width = 200;
     networkCanvas.width = 300;
-    
+
     const carCtx = carCanvas.getContext("2d");
     const networkCtx = networkCanvas.getContext("2d");
-    
+
     // Initialize road
-    const roadInstance = new Road(carCanvas.width/2, carCanvas.width*0.9);
+    const roadInstance = new Road(carCanvas.width / 2, carCanvas.width * 0.9);
     setRoad(roadInstance);
-    
+
     // Generate cars
     const N = 100;
     const cars = generateCars(N, roadInstance);
     carsRef.current = cars;
-    
+
     // Set best car
     let bestCarInstance = cars[0];
     setBestCar(bestCarInstance);
-    
+
     // Initialize traffic
     const initialTraffic = [
-      new Car(roadInstance.getLaneCenter(1), -100, 30, 50, "DUMMY", 2, getRandomColor()),
-      new Car(roadInstance.getLaneCenter(0), -300, 30, 50, "DUMMY", 2, getRandomColor()),
-      new Car(roadInstance.getLaneCenter(2), -300, 30, 50, "DUMMY", 2, getRandomColor())
+      new Car(
+        roadInstance.getLaneCenter(1),
+        -100,
+        30,
+        50,
+        "DUMMY",
+        2,
+        getRandomColor()
+      ),
+      new Car(
+        roadInstance.getLaneCenter(0),
+        -300,
+        30,
+        50,
+        "DUMMY",
+        2,
+        getRandomColor()
+      ),
+      new Car(
+        roadInstance.getLaneCenter(2),
+        -300,
+        30,
+        50,
+        "DUMMY",
+        2,
+        getRandomColor()
+      ),
     ];
     setTraffic(initialTraffic);
-    
+
     // Load saved brain if exists
     if (localStorage.getItem("bestBrain")) {
       for (let i = 0; i < cars.length; i++) {
@@ -643,48 +663,48 @@ export default function Home() {
         }
       }
     }
-    
+
     // Animation function
     function animate(time) {
       // Update traffic
-      initialTraffic.forEach(car => car.update(roadInstance.borders, []));
-      
+      initialTraffic.forEach((car) => car.update(roadInstance.borders, []));
+
       // Update AI cars
-      cars.forEach(car => car.update(roadInstance.borders, initialTraffic));
-      
+      cars.forEach((car) => car.update(roadInstance.borders, initialTraffic));
+
       // Find best car
       bestCarInstance = cars.find(
-        c => c.y === Math.min(...cars.map(c => c.y))
+        (c) => c.y === Math.min(...cars.map((c) => c.y))
       );
       setBestCar(bestCarInstance);
-      
+
       // Canvas updates
       carCanvas.height = window.innerHeight;
       networkCanvas.height = window.innerHeight;
-      
+
       carCtx.save();
       carCtx.translate(0, -bestCarInstance.y + carCanvas.height * 0.7);
-      
+
       roadInstance.draw(carCtx);
-      initialTraffic.forEach(car => car.draw(carCtx));
-      
+      initialTraffic.forEach((car) => car.draw(carCtx));
+
       carCtx.globalAlpha = 0.2;
-      cars.forEach(car => car.draw(carCtx));
-      
+      cars.forEach((car) => car.draw(carCtx));
+
       carCtx.globalAlpha = 1;
       bestCarInstance.draw(carCtx, true);
-      
+
       carCtx.restore();
-      
+
       networkCtx.lineDashOffset = -time / 50;
       Visualizer.drawNetwork(networkCtx, bestCarInstance.brain);
-      
+
       animationFrameRef.current = requestAnimationFrame(animate);
     }
-    
+
     // Start animation
     animate();
-    
+
     // Cleanup
     return () => {
       if (animationFrameRef.current) {
@@ -695,7 +715,7 @@ export default function Home() {
 
   const adjustAISpeed = (speed) => {
     if (carsRef.current) {
-      carsRef.current.forEach(car => {
+      carsRef.current.forEach((car) => {
         car.maxSpeed = parseFloat(speed);
       });
     }
@@ -703,10 +723,10 @@ export default function Home() {
   // Control functions
   const addTrafficCar = () => {
     if (!road) return;
-    
+
     const randomLane = Math.floor(Math.random() * 3);
-    const minY = Math.min(...traffic.map(car => car.y)) - 200;
-    
+    const minY = Math.min(...traffic.map((car) => car.y)) - 200;
+
     const newCar = new Car(
       road.getLaneCenter(randomLane),
       minY,
@@ -716,17 +736,19 @@ export default function Home() {
       2,
       getRandomColor()
     );
+
+    setTraffic((prevTraffic) => [...prevTraffic, newCar])
     
-    setTraffic(prevTraffic => [...prevTraffic, newCar]);
+    console.log(traffic);
   };
 
   const clearTraffic = () => {
-    setTraffic(prevTraffic => prevTraffic.slice(0, 3));
+    setTraffic((prevTraffic) => prevTraffic.slice(0, 3));
   };
 
   const adjustTrafficSpeed = (speed) => {
-    setTraffic(prevTraffic => 
-      prevTraffic.map(car => {
+    setTraffic((prevTraffic) =>
+      prevTraffic.map((car) => {
         car.maxSpeed = parseFloat(speed);
         return car;
       })
@@ -797,21 +819,124 @@ export default function Home() {
   }
   // Define control functions outside useEffect
 
-
+  const [showInfoPopup, setShowInfoPopup] = useState(false);
 
   return (
     <div className="relative w-full h-screen bg-gray-900 overflow-hidden">
-    <div className="flex flex-col w-full h-full items-center justify-center">
-      <canvas
-        ref={carCanvasRef}
-        className=" top-0 left-0 right-0 w-1/3 h-full"
-      />
-
-    </div>
+      <div className="flex flex-col w-full h-full items-center justify-center">
+        <canvas
+          ref={carCanvasRef}
+          className=" top-0 left-0 right-0 md:w-1/3 h-full"
+        />
+      </div>
 
       {/* Control Panel */}
       <div className="absolute top-4 right-4 flex flex-col gap-4 bg-gray-800/80 p-4 rounded-lg backdrop-blur-sm">
         {/* Save/Discard Controls */}
+        <div className="flex flex-row w-full items-center justify-center">
+          {!showInfoPopup && (
+            <button
+              onClick={() => setShowInfoPopup(true)}
+              className="self-end bg-indigo-500 w-full hover:bg-indigo-600 text-white p-2 rounded-full transition-colors"
+              title="Project Information"
+            >
+              Read More
+            </button>
+          )}
+        </div>
+        {showInfoPopup && (
+          <div className="  overflow-hidden  inset-0 bg-black/50 flex items-center justify-center p-4  z-50">
+            <div className="bg-black text-left text-white rounded-lg max-w-2xl max-h-[90vh] overflow-y-auto p-6 relative">
+              <button
+                onClick={() => setShowInfoPopup(false)}
+                className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+
+              <h2 className="text-2xl font-bold mb-4">
+                Self-Driving Car Neural Network Simulation
+              </h2>
+
+              <div className="space-y-4 text-gray-700">
+                <section>
+                  <h3 className="text-xl font-semibold mb-2">
+                    Project Overview
+                  </h3>
+                  <p>
+                    This simulation demonstrates how neural networks learn to
+                    drive cars through traffic using machine learning. The cars
+                    use sensors to detect obstacles and learn to navigate
+                    through experience and genetic evolution.
+                  </p>
+                </section>
+
+                <section>
+                  <h3 className="text-xl font-semibold mb-2">
+                    Controls Explanation
+                  </h3>
+                  <div className="space-y-2">
+                    <div>
+                      <span className="font-bold">💾 Save:</span> Stores the
+                      best performing car's neural network for future use.
+                    </div>
+                    <div>
+                      <span className="font-bold">🗑️ Discard:</span> Removes the
+                      saved neural network, allowing fresh learning.
+                    </div>
+                    <div>
+                      <span className="font-bold">🚗 Add Traffic:</span>{" "}
+                      Introduces new traffic cars to increase difficulty.
+                    </div>
+                    <div>
+                      <span className="font-bold">🧹 Clear Extra Traffic:</span>{" "}
+                      Removes additional traffic cars.
+                    </div>
+                    <div>
+                      <span className="font-bold">Traffic Speed Slider:</span>{" "}
+                      Adjusts the speed of traffic cars.
+                    </div>
+                  </div>
+                </section>
+
+                <section>
+                  <h3 className="text-xl font-semibold mb-2">How It Works</h3>
+                  <div className="space-y-2">
+                    <p>The simulation uses several key components:</p>
+                    <ul className="list-disc pl-5 space-y-1">
+                      <li>
+                        Neural Network: Makes driving decisions based on sensor
+                        inputs
+                      </li>
+                      <li>Sensors: Yellow lines showing obstacle detection</li>
+                      <li>
+                        Genetic Algorithm: Cars learn through mutation and
+                        natural selection
+                      </li>
+                      <li>
+                        Visualization: Left panel shows neural network&apos;s
+                        decision-making process
+                      </li>
+                    </ul>
+                  </div>
+                </section>
+
+                <section>
+                  <h3 className="text-xl font-semibold mb-2">
+                    Learning Process
+                  </h3>
+                  <p>
+                    The cars learn through generations of trial and error. The
+                    best-performing car&apos;s &quot;brain&quot; is saved and
+                    slightly mutated to create new generations. Over time, the
+                    cars develop better driving strategies and learn to avoid
+                    obstacles more effectively.
+                  </p>
+                </section>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="flex gap-2">
           <button
             onClick={save}
@@ -826,7 +951,6 @@ export default function Home() {
             🗑️ Discard
           </button>
         </div>
-
         {/* Traffic Controls */}
         <div className="flex flex-col gap-2">
           <button
@@ -842,43 +966,43 @@ export default function Home() {
             🧹 Clear Extra Traffic
           </button>
         </div>
-
         {/* Speed Control */}
         <div className="flex flex-col gap-3">
-    {/* AI Cars Speed Control */}
-    <div className="flex flex-col gap-1">
-      <label className="text-white text-sm">AI Cars Speed</label>
-      <input
-        type="range"
-        min="1"
-        max="5"
-        step="0.5"
-        defaultValue="3"
-        onChange={(e) => adjustAISpeed(e.target.value)}
-        className="w-full accent-green-500"
-      />
-    </div>
+          {/* AI Cars Speed Control */}
+          <div className="flex flex-col gap-1">
+            <label className="text-white text-sm">AI Cars Speed</label>
+            <input
+              type="range"
+              min="1"
+              max="5"
+              step="0.5"
+              defaultValue="3"
+              onChange={(e) => adjustAISpeed(e.target.value)}
+              className="w-full accent-green-500"
+            />
+          </div>
 
-    {/* Traffic Speed Control */}
-    <div className="flex flex-col gap-1">
-      <label className="text-white text-sm">Traffic Speed</label>
-      <input
-        type="range"
-        min="1"
-        max="5"
-        step="0.5"
-        defaultValue="2"
-        onChange={(e) => adjustTrafficSpeed(e.target.value)}
-        className="w-full accent-blue-500"
-      />
-    </div>
-  </div>      </div>
+          {/* Traffic Speed Control */}
+          <div className="flex flex-col gap-1">
+            <label className="text-white text-sm">Traffic Speed</label>
+            <input
+              type="range"
+              min="1"
+              max="5"
+              step="0.5"
+              defaultValue="2"
+              onChange={(e) => adjustTrafficSpeed(e.target.value)}
+              className="w-full accent-blue-500"
+            />
+          </div>
+        </div>{" "}
+      </div>
 
       {/* Neural Network Visualization */}
       <canvas
-        ref={networkCanvasRef}
-        className="absolute top-4 left-4 w-[300px] bg-gray-800/80 rounded-lg"
-      />
+  ref={networkCanvasRef}
+  className="absolute hidden md:block top-4 left-4 w-[300px] bg-gray-800/80 rounded-lg"
+/>
     </div>
   );
 }
